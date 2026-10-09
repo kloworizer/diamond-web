@@ -24,8 +24,13 @@ dibanding data tersimpan, setiap error lengkap dengan traceback, dan ringkasan.
 
 Satu tiket juga dapat disinkronkan dari halaman detilnya (Sinkronisasi KD Tahap).
 
+Selain per tahun, tiket tertentu dapat diproses dengan --tiket (nomor tiket
+dipisah koma). Sinkronisasi update tiket harian (`sync_tiket_update`) memakainya
+untuk tiket yang berubah pada run tersebut.
+
 Contoh:
     python manage.py sync_tiket_kd_tahap --tahun 2025
+    python manage.py sync_tiket_kd_tahap --tiket LM010010125072201,PL007010115110201
     python manage.py sync_tiket_kd_tahap --tahun 2025 --workers 8 --timeout 1800
     python manage.py sync_tiket_kd_tahap --tahun 2025 --tabel KPDE_A,KPDE_B
     python manage.py sync_tiket_kd_tahap --tahun 2025 --dry-run
@@ -161,16 +166,25 @@ def _query_unit(service, koneksi, timeout, unit, kolom, parallel):
     return unit
 
 
+def _daftar_tiket(options):
+    """Nomor tiket dari --tiket, tanpa duplikat dan dengan urutan dipertahankan."""
+    return list(dict.fromkeys(n.strip() for n in (options.get('tiket') or '').split(',') if n.strip()))
+
+
 class Command(BaseCommand):
     help = (
         "Ambil jumlah baris per KD_TAHAP dari tabel I Oracle untuk tiket "
-        "Pengendalian Mutu & Selesai pada satu tahun terima DIP (paralel per tabel)"
+        "Pengendalian Mutu & Selesai pada satu tahun terima DIP atau tiket tertentu (paralel per tabel)"
     )
 
     def add_arguments(self, parser):
         parser.add_argument(
-            '--tahun', type=int, required=True,
-            help='Tahun Tanggal Terima DIP tiket yang diproses (wajib).',
+            '--tahun', type=int,
+            help='Tahun Tanggal Terima DIP tiket yang diproses. Wajib bila --tiket tidak diisi.',
+        )
+        parser.add_argument(
+            '--tiket', default='',
+            help='Hanya proses nomor tiket ini (dipisah koma). Bisa dipakai tanpa --tahun.',
         )
         parser.add_argument(
             '--tabel', default='',
@@ -236,12 +250,15 @@ class Command(BaseCommand):
             'hasil': Counter(),
             'errors': [],
             'tabel_gagal': {},  # nama tabel -> pesan error terakhir
+            'tiket_gagal': [],  # nomor tiket di tabel yang gagal
         }
         self.log.info(f"=== Sinkronisasi KD Tahap{' (DRY-RUN, tidak menyimpan)' if dry_run else ''} ===")
         self.log.info(
-            "Parameter: tahun={tahun} koneksi={koneksi} schema={schema!r} kolom_tiket={kolom_tiket} "
+            "Parameter: tahun={tahun} tiket={jumlah_tiket} koneksi={koneksi} schema={schema!r} kolom_tiket={kolom_tiket} "
             "kolom_tahap={kolom_tahap} kolom_qc={kolom_qc} workers={workers} parallel={parallel} timeout={timeout}s retry={retry} "
-            "tabel={tabel!r} dry_run={dry_run}".format(**options)
+            "tabel={tabel!r} dry_run={dry_run}".format(
+                jumlah_tiket=len(_daftar_tiket(options)) or '-', **options,
+            )
         )
         self.log.info(
             "Status tiket: " + ', '.join(f"{s} ({STATUS_LABELS[s]})" for s in STATUS_KD_TAHAP)
@@ -264,6 +281,9 @@ class Command(BaseCommand):
 
     def _jalankan(self, options):
         tahun = options['tahun']
+        nomor_tikets = _daftar_tiket(options)
+        if tahun is None and not nomor_tikets:
+            raise CommandError("Isi --tahun atau --tiket")
         schema = options['schema'].strip()
         kolom_tiket = options['kolom_tiket'].strip()
         kolom_tahap = options['kolom_tahap'].strip()
@@ -282,12 +302,29 @@ class Command(BaseCommand):
         if options['timeout'] < 0 or options['retry'] < 0 or options['parallel'] < 0:
             raise CommandError("--timeout, --retry dan --parallel tidak boleh negatif")
 
-        tikets = list(
+        qs = (
             Tiket.objects
-            .filter(status_tiket__in=STATUS_KD_TAHAP, tgl_terima_dip__year=tahun)
+            .filter(status_tiket__in=STATUS_KD_TAHAP)
             .select_related('id_periode_data__id_sub_jenis_data_ilap')
             .order_by('id')
         )
+        if tahun is not None:
+            qs = qs.filter(tgl_terima_dip__year=tahun)
+        if nomor_tikets:
+            # Per potong: IN (...) yang terlalu panjang melewati batas parameter SQLite.
+            tikets = sorted(
+                (t for awal in range(0, len(nomor_tikets), 500)
+                 for t in qs.filter(nomor_tiket__in=nomor_tikets[awal:awal + 500])),
+                key=lambda t: t.id,
+            )
+            dilewati = len(nomor_tikets) - len(tikets)
+            if dilewati:
+                self.log.info(
+                    f"{dilewati} dari {len(nomor_tikets)} tiket yang diminta dilewati: tidak ditemukan, "
+                    f"bukan Pengendalian Mutu/Selesai{', atau di luar tahun ' + str(tahun) if tahun else ''}."
+                )
+        else:
+            tikets = list(qs)
 
         per_tabel = defaultdict(list)
         tidak_valid = []
@@ -305,13 +342,17 @@ class Command(BaseCommand):
             tikets = [t for daftar in per_tabel.values() for t in daftar]
             tidak_ada = sorted(hanya_tabel - set(per_tabel))
             if tidak_ada:
-                self.log.warn(f"--tabel tanpa tiket tahun {tahun}: {', '.join(tidak_ada)}")
+                self.log.warn(f"--tabel tanpa tiket yang diproses: {', '.join(tidak_ada)}")
 
         self.summary['tiket'] = len(tikets)
         self.summary['tabel'] = len(per_tabel)
         per_status = Counter(STATUS_LABELS.get(t.status_tiket, t.status_tiket) for t in tikets)
         mode = ' (dry-run)' if options['dry_run'] else ''
-        self.stdout.write(f"Tiket Pengendalian Mutu & Selesai tahun terima DIP {tahun}: {len(tikets)}{mode}")
+        lingkup = ' dan '.join(filter(None, [
+            f"tahun terima DIP {tahun}" if tahun is not None else '',
+            f"{len(nomor_tikets)} tiket yang diminta" if nomor_tikets else '',
+        ]))
+        self.stdout.write(f"Tiket Pengendalian Mutu & Selesai, {lingkup}: {len(tikets)}{mode}")
         self.log.info(
             f"Tiket ditemukan: {len(tikets)} ("
             + (', '.join(f"{nama}={n}" for nama, n in sorted(per_status.items())) or '-') + ")"
@@ -417,6 +458,7 @@ class Command(BaseCommand):
         if timeout:
             pesan = f"query melewati batas waktu {batas} detik ({pesan})"
         self.summary['tabel_gagal'][unit.nama_tabel] = pesan
+        self.summary['tiket_gagal'].extend(t.nomor_tiket for t in unit.tikets)
         for tiket in unit.tikets:
             self._catat_gagal(tiket, unit.tabel, f"query gagal setelah {unit.percobaan} percobaan: {pesan}")
 
@@ -479,8 +521,13 @@ class Command(BaseCommand):
         gagal = self.summary['tabel_gagal']
         if not gagal:
             return None
-        bagian = [f"python manage.py sync_tiket_kd_tahap --tahun {options['tahun']}",
-                  f"--tabel {','.join(sorted(gagal))}"]
+        if _daftar_tiket(options):
+            # Hanya tiket yang gagal, bukan seluruh tiket yang diminta.
+            bagian = ["python manage.py sync_tiket_kd_tahap",
+                      f"--tiket {','.join(sorted(set(self.summary['tiket_gagal'])))}"]
+        else:
+            bagian = ["python manage.py sync_tiket_kd_tahap", f"--tahun {options['tahun']}",
+                      f"--tabel {','.join(sorted(gagal))}"]
         if options['koneksi'] != KONEKSI:
             bagian.append(f"--koneksi {options['koneksi']}")
         if options['schema'].strip() != SCHEMA:

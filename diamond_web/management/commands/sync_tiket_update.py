@@ -3,6 +3,7 @@ import uuid
 import logging
 from datetime import datetime
 
+from django.core.management import call_command
 from django.core.management.base import BaseCommand, CommandError
 from django.utils import timezone
 
@@ -13,7 +14,16 @@ logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
-    help = "Update tiket QC/transfer columns from Oracle and apply status transitions"
+    help = (
+        "Update tiket QC/transfer columns from Oracle and apply status transitions, "
+        "then refresh KD Tahap for the tikets that changed"
+    )
+
+    def add_arguments(self, parser):
+        parser.add_argument(
+            '--tanpa-kd-tahap', action='store_true',
+            help='Jangan sinkronkan KD Tahap untuk tiket yang berubah setelah update.',
+        )
 
     def handle(self, *args, **options):
         try:
@@ -53,3 +63,31 @@ class Command(BaseCommand):
 
         except OracleSyncConfigError as exc:
             raise CommandError(str(exc)) from exc
+
+        if not options['tanpa_kd_tahap']:
+            self._sinkron_kd_tahap(summary.get('changed_tikets', []))
+
+    def _sinkron_kd_tahap(self, nomor_tikets):
+        """Refresh KD Tahap for the tikets this update changed.
+
+        Their QC / baris counts moved, so their rows per KD Tahap & QC may have
+        too. `sync_tiket_kd_tahap` keeps only those now at Pengendalian Mutu or
+        Selesai and writes its own log to sync_logs/. A failure here leaves the
+        tiket update, already saved, as it is.
+        """
+        self.stdout.write('')
+        if not nomor_tikets:
+            self.stdout.write('KD Tahap: tidak ada tiket yang berubah, tidak ada yang disinkronkan.')
+            return
+        self.stdout.write(f'Sinkronisasi KD Tahap untuk {len(nomor_tikets)} tiket yang berubah...')
+        try:
+            call_command(
+                'sync_tiket_kd_tahap', tiket=','.join(nomor_tikets),
+                stdout=self.stdout, stderr=self.stderr,
+            )
+        except Exception as exc:  # CommandError (Oracle unreachable, ...) or unexpected
+            logger.exception('KD Tahap setelah update tiket gagal')
+            self.stdout.write(self.style.WARNING(
+                f'Sinkronisasi KD Tahap gagal: {exc}. Update tiket tetap tersimpan; '
+                'detail ada di log "Sinkronisasi KD Tahap" di halaman Sync Log Status.'
+            ))

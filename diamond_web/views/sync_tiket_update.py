@@ -1487,7 +1487,8 @@ def _update_tiket_data(service, sync_id=None, stop_checker=None):
     Returns:
         dict with keys: updated_rows, status_to_identifikasi, status_to_pmde,
         status_to_selesai, status_to_rematch, status_to_transfer_ulang,
-        errors, updated_keys
+        errors, updated_keys (a few examples), changed_tikets (every nomor
+        tiket this run changed, for follow-up syncs such as KD Tahap)
     """
     try:
         db_vendor = db_connection.vendor
@@ -1508,7 +1509,7 @@ def _update_tiket_data(service, sync_id=None, stop_checker=None):
                 'updated_rows': 0, 'status_to_identifikasi': 0,
                 'status_to_pmde': 0, 'status_to_selesai': 0,
                 'status_to_rematch': 0, 'status_to_transfer_ulang': 0,
-                'errors': [], 'updated_keys': [],
+                'errors': [], 'updated_keys': [], 'changed_tikets': [],
             }
 
         # Bulk-fetch existing Tikets
@@ -1549,6 +1550,7 @@ def _update_tiket_data(service, sync_id=None, stop_checker=None):
         unchanged_count = 0
         errors = []
         updated_keys = []
+        changed_tikets = []
 
         for idx, row in enumerate(rows):
             if stop_checker and stop_checker():
@@ -1594,6 +1596,7 @@ def _update_tiket_data(service, sync_id=None, stop_checker=None):
 
                 _apply_tiket_update_plan(tiket, plan, active_pics_map.get(tiket.id, {}), sync_id)
                 updated_rows += 1
+                changed_tikets.append(nomor_tiket)
                 if len(updated_keys) < 5:
                     updated_keys.append(nomor_tiket)
 
@@ -1623,6 +1626,7 @@ def _update_tiket_data(service, sync_id=None, stop_checker=None):
             'unchanged': unchanged_count,
             'errors': errors,
             'updated_keys': updated_keys,
+            'changed_tikets': changed_tikets,
         }
     except Exception as e:
         logger.error(f'Tiket update sync failed: {str(e)}', exc_info=True)
@@ -1632,7 +1636,7 @@ def _update_tiket_data(service, sync_id=None, stop_checker=None):
             'status_to_dikembalikan': 0, 'status_to_rematch': 0,
             'status_to_transfer_ulang': 0,
             'not_found': 0, 'unchanged': 0,
-            'errors': [str(e)], 'updated_keys': [],
+            'errors': [str(e)], 'updated_keys': [], 'changed_tikets': [],
         }
 
 

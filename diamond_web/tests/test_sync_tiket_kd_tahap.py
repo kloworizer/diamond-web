@@ -286,7 +286,7 @@ def test_log_records_parameters_each_tiket_and_summary(log_dir):
     name, log = _log(log_dir)
     assert LOG_FILENAME_PATTERN.match(name).group(1) == 'kd_tahap_sync'
     assert f'Log: {log_dir / name}' in out
-    assert 'Parameter: tahun=2025 koneksi=secondary' in log
+    assert 'Parameter: tahun=2025 tiket=- koneksi=secondary' in log
     assert 'Tiket ditemukan: 4 (Selesai=4)' in log
     assert 'Query BANKDATAPDE.KPDE_CONTOH: 4 tiket, 4 baris hasil (tiket berisi: 3)' in log
     assert f'BARU        tiket=T0000000000000001 id={baru.id} status=Selesai kd_tahap/qc 0->2 total_baris 0->15' in log
@@ -451,7 +451,7 @@ def test_tabel_option_only_reruns_the_given_tables():
     assert [sql.split(' FROM ')[1].split()[0] for sql, _ in oracle.calls] == ['BANKDATAPDE.KPDE_A']
     assert _simpanan(a) == {'1': 5}
     assert _simpanan(b) == {'1': 9}
-    assert 'Tiket Pengendalian Mutu & Selesai tahun terima DIP 2025: 1' in out
+    assert 'Tiket Pengendalian Mutu & Selesai, tahun terima DIP 2025: 1' in out
 
 
 def test_dropped_connection_counts_as_timeout_only_past_the_limit():
@@ -551,3 +551,44 @@ def test_dpy_4024_is_a_timeout():
     from diamond_web.utils.tiket_kd_tahap import is_timeout
 
     assert is_timeout(Exception('DPY-4024: call timeout of 900000 ms exceeded'))
+
+
+@pytest.mark.django_db
+def test_tiket_option_processes_only_the_given_tikets(log_dir):
+    a = _tiket('T0000000000000001')
+    b = _tiket('T0000000000000002', tahun=2019)  # any year
+    identifikasi = _tiket('T0000000000000003', status=STATUS_IDENTIFIKASI)
+    lain = _tiket('T0000000000000004')
+
+    out, oracle = _run(
+        {t: [('1', 'P', 3)] for t in ('T0000000000000001', 'T0000000000000002', 'T0000000000000003', 'T0000000000000004')},
+        tiket='T0000000000000001, T0000000000000002,T0000000000000003,T0000000000000009',
+    )
+
+    assert sorted(p for _, params in oracle.calls for p in params) == ['T0000000000000001', 'T0000000000000002']
+    assert _simpanan(a) == {('1', 'P'): 3} and _simpanan(b) == {('1', 'P'): 3}
+    assert not TiketKdTahap.objects.filter(id_tiket__in=[identifikasi, lain]).exists()
+    assert 'Tiket Pengendalian Mutu & Selesai, 4 tiket yang diminta: 2' in out
+    _, log = _log(log_dir)
+    assert 'Parameter: tahun=None tiket=4 koneksi=secondary' in log
+    assert '2 dari 4 tiket yang diminta dilewati' in log
+
+
+@pytest.mark.django_db
+def test_tahun_or_tiket_is_required():
+    with pytest.raises(CommandError, match='--tahun atau --tiket'):
+        call_command('sync_tiket_kd_tahap', stdout=StringIO(), stderr=StringIO())
+
+
+@pytest.mark.django_db
+def test_tiket_mode_rerun_command_lists_failed_tikets(log_dir):
+    _tiket('T0000000000000001', tabel='KPDE_BESAR')
+    _tiket('T0000000000000002')
+
+    out, _ = _run(
+        {'T0000000000000002': [('1', 2)]},
+        gagal={'KPDE_BESAR': TIMEOUT},
+        tiket='T0000000000000001,T0000000000000002', retry=0,
+    )
+
+    assert 'python manage.py sync_tiket_kd_tahap --tiket T0000000000000001 --timeout 7200' in out
